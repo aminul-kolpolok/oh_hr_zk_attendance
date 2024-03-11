@@ -2,6 +2,9 @@
 
 import binascii
 from struct import pack, unpack
+
+from reportlab import xrange
+
 from .zkconst import *
 
 
