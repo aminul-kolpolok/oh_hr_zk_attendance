@@ -115,7 +115,8 @@ class ZkMachine(models.Model):
                         if attendance:
                             for each in attendance:
                                 atten_time = each.timestamp
-                                atten_time = datetime.strptime(atten_time.strftime('%Y-%m-%d %H:%M:%S'), '%Y-%m-%d %H:%M:%S')
+                                atten_time = datetime.strptime(atten_time.strftime('%Y-%m-%d %H:%M:%S'),
+                                                               '%Y-%m-%d %H:%M:%S')
                                 local_tz = pytz.timezone(
                                     self.env.user.partner_id.tz or 'GMT')
                                 local_dt = local_tz.localize(atten_time, is_dst=None)
@@ -131,7 +132,8 @@ class ZkMachine(models.Model):
                                                 [('device_id', '=', each.user_id)])
                                             if get_user_id:
                                                 duplicate_atten_ids = zk_attendance.search(
-                                                    [('device_id', '=', each.user_id), ('punching_time', '=', atten_time)])
+                                                    [('device_id', '=', each.user_id),
+                                                     ('punching_time', '=', atten_time)])
                                                 if duplicate_atten_ids:
                                                     continue
                                                 else:
@@ -151,7 +153,8 @@ class ZkMachine(models.Model):
                                                         if len(att_var) == 1:
                                                             att_var.write({'check_out': atten_time})
                                                         else:
-                                                            att_var1 = att_obj.search([('employee_id', '=', get_user_id.id)])
+                                                            att_var1 = att_obj.search(
+                                                                [('employee_id', '=', get_user_id.id)])
                                                             if att_var1:
                                                                 att_var1[-1].write({'check_out': atten_time})
 
@@ -168,6 +171,7 @@ class ZkMachine(models.Model):
                                                                 'check_in': atten_time})
                                         else:
                                             pass
+                            # Return True only after attempting to retrieve attendance from all machines
                             return True
                         else:
                             raise UserError(_('Unable to get the attendance log, please try again later.'))
@@ -179,3 +183,6 @@ class ZkMachine(models.Model):
                 finally:
                     if conn:
                         conn.disconnect()
+
+        # Return False if no attendance data was retrieved from any machine
+        return False
