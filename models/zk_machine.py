@@ -1,27 +1,10 @@
 import pytz
-import sys
-import datetime
-import logging
-import binascii
-import requests
-import socket
-import urllib.request
-from zk import ZK
 from datetime import datetime
-import pytz
-
-from . import zklib
-from .zkconst import *
 from struct import unpack
+import logging
+from zk import ZK
 from odoo import api, fields, models
-from odoo import _
-from odoo.exceptions import UserError, ValidationError
-
-_logger = logging.getLogger(__name__)
-try:
-    from zk import ZK, const
-except ImportError:
-    _logger.error("Please Install pyzk library.")
+from odoo.exceptions import UserError
 
 _logger = logging.getLogger(__name__)
 
@@ -49,54 +32,6 @@ class ZkMachine(models.Model):
             _logger.error("Error connecting to device: %s", str(e))
         return conn
 
-    def clear_attendance(self):
-        for info in self:
-            try:
-                machine_ip = info.name
-                zk_port = info.port_no
-                timeout = 30
-                try:
-                    zk = ZK(machine_ip, port=zk_port, timeout=timeout, password=0, force_udp=False, ommit_ping=False)
-                except NameError:
-                    raise UserError(_("Please install it with 'pip3 install pyzk'."))
-                conn = self.device_connect(zk)
-                if conn:
-                    conn.enable_device()
-                    clear_data = zk.get_attendance()
-                    if clear_data:
-                        # conn.clear_attendance()
-                        self._cr.execute("""delete from zk_machine_attendance""")
-                        conn.disconnect()
-                        raise UserError(_('Attendance Records Deleted.'))
-                    else:
-                        raise UserError(_('Unable to clear Attendance log. Are you sure attendance log is not empty.'))
-                else:
-                    raise UserError(
-                        _('Unable to connect to Attendance Device. Please use Test Connection button to verify.'))
-            except:
-                raise ValidationError(
-                    'Unable to clear Attendance log. Are you sure attendance device is connected & record is not empty.')
-
-    def getSizeUser(self, zk):
-        """Checks a returned packet to see if it returned CMD_PREPARE_DATA,
-        indicating that data packets are to be sent
-
-        Returns the amount of bytes that are going to be sent"""
-        command = unpack('HHHH', zk.data_recv[:8])[0]
-        if command == CMD_PREPARE_DATA:
-            size = unpack('I', zk.data_recv[8:12])[0]
-            return size
-        else:
-            return False
-
-    def zkgetuser(self, zk):
-        """Start a connection with the time clock"""
-        try:
-            users = zk.get_users()
-            return users
-        except:
-            return False
-
     @api.model
     def cron_download(self):
         machines = self.env['zk.machine'].search([])
@@ -118,28 +53,15 @@ class ZkMachine(models.Model):
             conn = self.device_connect(zk)
 
             if conn:
-                # conn.disable_device() #Device Cannot be used during this time.
                 try:
                     user = conn.get_users()
-                except:
-                    user = False
-                try:
                     attendance = conn.get_attendance()
-                    # import pdb
-                    # pdb.set_trace();
-                except:
-                    attendance = False
+                except Exception as e:
+                    raise UserError(_('Error: %s') % str(e))
+
                 if attendance:
                     for each in attendance:
                         atten_time = each.timestamp
-                        atten_time = datetime.strptime(atten_time.strftime('%Y-%m-%d %H:%M:%S'), '%Y-%m-%d %H:%M:%S')
-                        local_tz = pytz.timezone(
-                            self.env.user.partner_id.tz or 'GMT')
-                        local_dt = local_tz.localize(atten_time, is_dst=None)
-                        utc_dt = local_dt.astimezone(pytz.utc)
-                        utc_dt = utc_dt.strftime("%Y-%m-%d %H:%M:%S")
-                        atten_time = datetime.strptime(
-                            utc_dt, "%Y-%m-%d %H:%M:%S")
                         atten_time = fields.Datetime.to_string(atten_time)
                         if user:
                             for uid in user:
@@ -155,7 +77,6 @@ class ZkMachine(models.Model):
                                             zk_attendance.create({'employee_id': get_user_id.id,
                                                                   'device_id': each.user_id,
                                                                   'attendance_type': str(each.status),
-                                                                  # 'punch_type': str(each.punch),
                                                                   'punching_time': atten_time,
                                                                   'address_id': info.address_id.id})
                                             att_var = att_obj.search([('employee_id', '=', get_user_id.id),
@@ -178,15 +99,11 @@ class ZkMachine(models.Model):
                                         zk_attendance.create({'employee_id': employee.id,
                                                               'device_id': each.user_id,
                                                               'attendance_type': str(each.status),
-                                                              # 'punch_type': str(each.punch),
                                                               'punching_time': atten_time,
                                                               'address_id': info.address_id.id})
                                         att_obj.create({'employee_id': employee.id,
                                                         'check_in': atten_time})
-                                else:
-                                    pass
-                    # zk.enableDevice()
-                    conn.disconnect
+                    conn.disconnect()
                     return True
                 else:
                     raise UserError(_('Unable to get the attendance log, please try again later.'))
