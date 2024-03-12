@@ -1,8 +1,16 @@
+#Second term code:
+
 import pytz
 import sys
 import datetime
 import logging
 import binascii
+import requests
+import socket
+import urllib.request
+from zk import ZK
+from datetime import datetime
+import pytz
 
 from . import zklib
 from .zkconst import *
@@ -35,11 +43,13 @@ class ZkMachine(models.Model):
     company_id = fields.Many2one('res.company', string='Company', default=lambda self: self.env.user.company_id.id)
 
     def device_connect(self, zk):
+        # Modify this function as needed to connect to the device
+        conn = None
         try:
             conn = zk.connect()
-            return conn
-        except:
-            return False
+        except Exception as e:
+            _logger.error("Error connecting to device: %s", str(e))
+        return conn
 
     def clear_attendance(self):
         for info in self:
@@ -103,86 +113,84 @@ class ZkMachine(models.Model):
             machine_ip = info.name
             zk_port = info.port_no
             timeout = 15
-            max_retries = 3
-            retry_count = 0
-            while retry_count < max_retries:
+            try:
+                zk = ZK(machine_ip, port=zk_port, timeout=timeout, password=0, force_udp=False, ommit_ping=False)
+            except NameError:
+                raise UserError(_("Pyzk module not Found. Please install it with 'pip3 install pyzk'."))
+            conn = self.device_connect(zk)
+
+            if conn:
+                # conn.disable_device() #Device Cannot be used during this time.
                 try:
-                    zk = ZK(machine_ip, port=zk_port, timeout=timeout, password=0, force_udp=False, ommit_ping=False)
-                    conn = self.device_connect(zk)
-                    if conn:
-                        user = conn.get_users()
-                        attendance = conn.get_attendance()
-                        if attendance:
-                            for each in attendance:
-                                atten_time = each.timestamp
-                                atten_time = datetime.strptime(atten_time.strftime('%Y-%m-%d %H:%M:%S'),
-                                                               '%Y-%m-%d %H:%M:%S')
-                                local_tz = pytz.timezone(
-                                    self.env.user.partner_id.tz or 'GMT')
-                                local_dt = local_tz.localize(atten_time, is_dst=None)
-                                utc_dt = local_dt.astimezone(pytz.utc)
-                                utc_dt = utc_dt.strftime("%Y-%m-%d %H:%M:%S")
-                                atten_time = datetime.strptime(
-                                    utc_dt, "%Y-%m-%d %H:%M:%S")
-                                atten_time = fields.Datetime.to_string(atten_time)
-                                if user:
-                                    for uid in user:
-                                        if uid.user_id == each.user_id:
-                                            get_user_id = self.env['hr.employee'].search(
-                                                [('device_id', '=', each.user_id)])
-                                            if get_user_id:
-                                                duplicate_atten_ids = zk_attendance.search(
-                                                    [('device_id', '=', each.user_id),
-                                                     ('punching_time', '=', atten_time)])
-                                                if duplicate_atten_ids:
-                                                    continue
-                                                else:
-                                                    zk_attendance.create({'employee_id': get_user_id.id,
-                                                                          'device_id': each.user_id,
-                                                                          'attendance_type': str(each.status),
-                                                                          # 'punch_type': str(each.punch),
-                                                                          'punching_time': atten_time,
-                                                                          'address_id': info.address_id.id})
-                                                    att_var = att_obj.search([('employee_id', '=', get_user_id.id),
-                                                                              ('check_out', '=', False)])
-                                                    if each.punch == 0:  # check-in
-                                                        if not att_var:
-                                                            att_obj.create({'employee_id': get_user_id.id,
-                                                                            'check_in': atten_time})
-                                                    if each.punch == 1:  # check-out
-                                                        if len(att_var) == 1:
-                                                            att_var.write({'check_out': atten_time})
-                                                        else:
-                                                            att_var1 = att_obj.search(
-                                                                [('employee_id', '=', get_user_id.id)])
-                                                            if att_var1:
-                                                                att_var1[-1].write({'check_out': atten_time})
-
-                                            else:
-                                                employee = self.env['hr.employee'].create(
-                                                    {'device_id': each.user_id, 'name': uid.name})
-                                                zk_attendance.create({'employee_id': employee.id,
-                                                                      'device_id': each.user_id,
-                                                                      'attendance_type': str(each.status),
-                                                                      # 'punch_type': str(each.punch),
-                                                                      'punching_time': atten_time,
-                                                                      'address_id': info.address_id.id})
-                                                att_obj.create({'employee_id': employee.id,
-                                                                'check_in': atten_time})
+                    user = conn.get_users()
+                except:
+                    user = False
+                try:
+                    attendance = conn.get_attendance()
+                    # import pdb
+                    # pdb.set_trace();
+                except:
+                    attendance = False
+                if attendance:
+                    for each in attendance:
+                        atten_time = each.timestamp
+                        atten_time = datetime.strptime(atten_time.strftime('%Y-%m-%d %H:%M:%S'), '%Y-%m-%d %H:%M:%S')
+                        local_tz = pytz.timezone(
+                            self.env.user.partner_id.tz or 'GMT')
+                        local_dt = local_tz.localize(atten_time, is_dst=None)
+                        utc_dt = local_dt.astimezone(pytz.utc)
+                        utc_dt = utc_dt.strftime("%Y-%m-%d %H:%M:%S")
+                        atten_time = datetime.strptime(
+                            utc_dt, "%Y-%m-%d %H:%M:%S")
+                        atten_time = fields.Datetime.to_string(atten_time)
+                        if user:
+                            for uid in user:
+                                if uid.user_id == each.user_id:
+                                    get_user_id = self.env['hr.employee'].search(
+                                        [('device_id', '=', each.user_id)])
+                                    if get_user_id:
+                                        duplicate_atten_ids = zk_attendance.search(
+                                            [('device_id', '=', each.user_id), ('punching_time', '=', atten_time)])
+                                        if duplicate_atten_ids:
+                                            continue
                                         else:
-                                            pass
-                            # Return True only after attempting to retrieve attendance from all machines
-                            return True
-                        else:
-                            raise UserError(_('Unable to get the attendance log, please try again later.'))
-                    else:
-                        raise UserError(_('Unable to connect, please check the parameters and network connections.'))
-                except Exception as e:
-                    retry_count += 1
-                    _logger.error("Error during attendance download: %s", str(e))
-                finally:
-                    if conn:
-                        conn.disconnect()
+                                            zk_attendance.create({'employee_id': get_user_id.id,
+                                                                  'device_id': each.user_id,
+                                                                  'attendance_type': str(each.status),
+                                                                  # 'punch_type': str(each.punch),
+                                                                  'punching_time': atten_time,
+                                                                  'address_id': info.address_id.id})
+                                            att_var = att_obj.search([('employee_id', '=', get_user_id.id),
+                                                                      ('check_out', '=', False)])
+                                            if each.punch == 0:  # check-in
+                                                if not att_var:
+                                                    att_obj.create({'employee_id': get_user_id.id,
+                                                                    'check_in': atten_time})
+                                            if each.punch == 1:  # check-out
+                                                if len(att_var) == 1:
+                                                    att_var.write({'check_out': atten_time})
+                                                else:
+                                                    att_var1 = att_obj.search([('employee_id', '=', get_user_id.id)])
+                                                    if att_var1:
+                                                        att_var1[-1].write({'check_out': atten_time})
 
-        # Return False if no attendance data was retrieved from any machine
-        return False
+                                    else:
+                                        employee = self.env['hr.employee'].create(
+                                            {'device_id': each.user_id, 'name': uid.name})
+                                        zk_attendance.create({'employee_id': employee.id,
+                                                              'device_id': each.user_id,
+                                                              'attendance_type': str(each.status),
+                                                              # 'punch_type': str(each.punch),
+                                                              'punching_time': atten_time,
+                                                              'address_id': info.address_id.id})
+                                        att_obj.create({'employee_id': employee.id,
+                                                        'check_in': atten_time})
+                                else:
+                                    pass
+                    # zk.enableDevice()
+                    conn.disconnect
+                    return True
+                else:
+                    raise UserError(_('Unable to get the attendance log, please try again later.'))
+            else:
+                raise UserError(_('Unable to connect, please check the parameters and network connections.'))
