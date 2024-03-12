@@ -1,29 +1,14 @@
-# -*- coding: utf-8 -*-
-#############################################################################
-#
-#    Cybrosys Technologies Pvt. Ltd.
-#
-#    Copyright (C) 2022-TODAY Cybrosys Technologies(<https://www.cybrosys.com>)
-#    Author: Cybrosys Techno Solutions(<https://www.cybrosys.com>)
-#
-#    You can modify it under the terms of the GNU LESSER
-#    GENERAL PUBLIC LICENSE (LGPL v3), Version 3.
-#
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU LESSER GENERAL PUBLIC LICENSE (LGPL v3) for more details.
-#
-#    You should have received a copy of the GNU LESSER GENERAL PUBLIC LICENSE
-#    (LGPL v3) along with this program.
-#    If not, see <http://www.gnu.org/licenses/>.
-#
-#############################################################################
 import pytz
 import sys
 import datetime
 import logging
 import binascii
+import requests
+import socket
+import urllib.request
+from zk import ZK
+from datetime import datetime
+import pytz
 
 from . import zklib
 from .zkconst import *
@@ -56,11 +41,13 @@ class ZkMachine(models.Model):
     company_id = fields.Many2one('res.company', string='Company', default=lambda self: self.env.user.company_id.id)
 
     def device_connect(self, zk):
+        # Modify this function as needed to connect to the device
+        conn = None
         try:
             conn = zk.connect()
-            return conn
-        except:
-            return False
+        except Exception as e:
+            _logger.error("Error connecting to device: %s", str(e))
+        return conn
 
     def clear_attendance(self):
         for info in self:
@@ -129,6 +116,7 @@ class ZkMachine(models.Model):
             except NameError:
                 raise UserError(_("Pyzk module not Found. Please install it with 'pip3 install pyzk'."))
             conn = self.device_connect(zk)
+
             if conn:
                 # conn.disable_device() #Device Cannot be used during this time.
                 try:
@@ -137,6 +125,8 @@ class ZkMachine(models.Model):
                     user = False
                 try:
                     attendance = conn.get_attendance()
+                    # import pdb
+                    # pdb.set_trace();
                 except:
                     attendance = False
                 if attendance:
