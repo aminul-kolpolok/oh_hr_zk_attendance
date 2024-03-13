@@ -100,13 +100,10 @@ class ZkMachine(models.Model):
         for machine in machines:
             machine.download_attendance()
 
-    def download_attendance(self):
+    def download_attendance(self, server_tz='UTC'):
         _logger.info("++++++++++++Cron Executed++++++++++++++++++++++")
         zk_attendance = self.env['zk.machine.attendance']
         att_obj = self.env['hr.attendance']
-
-        # Import timezone function directly
-        server_tz = timezone(self.env.context.get('tz') or 'UTC')
 
         for info in self:
             machine_ip = info.name
@@ -125,6 +122,8 @@ class ZkMachine(models.Model):
                         attendance = conn.get_attendance()
 
                         if attendance:
+                            server_tz = timezone(server_tz)  # Convert timezone to pytz timezone object
+
                             for each in attendance:
                                 atten_time = each.timestamp
                                 atten_time = datetime.strptime(atten_time.strftime('%Y-%m-%d %H:%M:%S'),
