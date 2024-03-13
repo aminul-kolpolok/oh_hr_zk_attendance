@@ -8,6 +8,7 @@
 import pytz
 import logging
 import datetime
+from pytz import timezone
 from . import zklib
 from .zkconst import *
 from struct import unpack
@@ -104,7 +105,8 @@ class ZkMachine(models.Model):
         zk_attendance = self.env['zk.machine.attendance']
         att_obj = self.env['hr.attendance']
 
-        server_tz = datetime.timezone(self.env.context.get('tz') or 'UTC')  # Import timezone module correctly
+        # Import timezone function directly
+        server_tz = timezone(self.env.context.get('tz') or 'UTC')
 
         for info in self:
             machine_ip = info.name
