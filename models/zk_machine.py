@@ -1,3 +1,10 @@
+# -*- coding: utf-8 -*-
+#############################################################################
+#    You should have received a copy of the GNU LESSER GENERAL PUBLIC LICENSE
+#    (LGPL v3) along with this program.
+#    If not, see <http://www.gnu.org/licenses/>.
+#
+#############################################################################
 import pytz
 import sys
 import datetime
@@ -108,8 +115,8 @@ class ZkMachine(models.Model):
             except NameError:
                 raise UserError(_("Pyzk module not Found. Please install it with 'pip3 install pyzk'."))
             conn = self.device_connect(zk)
+
             if conn:
-                # conn.disable_device() #Device Cannot be used during this time.
                 try:
                     user = conn.get_users()
                 except:
@@ -118,23 +125,19 @@ class ZkMachine(models.Model):
                     attendance = conn.get_attendance()
                 except:
                     attendance = False
+
                 if attendance:
                     for each in attendance:
                         atten_time = each.timestamp
-                        atten_time = datetime.strptime(atten_time.strftime('%Y-%m-%d %H:%M:%S'), '%Y-%m-%d %H:%M:%S')
-                        local_tz = pytz.timezone(
-                            self.env.user.partner_id.tz or 'GMT')
-                        local_dt = local_tz.localize(atten_time, is_dst=None)
-                        utc_dt = local_dt.astimezone(pytz.utc)
-                        utc_dt = utc_dt.strftime("%Y-%m-%d %H:%M:%S")
-                        atten_time = datetime.strptime(
-                            utc_dt, "%Y-%m-%d %H:%M:%S")
+                        # Convert timestamp to server's timezone
+                        server_tz = timezone(self.env.context.get('tz') or 'UTC')
+                        atten_time = server_tz.localize(atten_time).astimezone(pytz.utc)
                         atten_time = fields.Datetime.to_string(atten_time)
+
                         if user:
                             for uid in user:
                                 if uid.user_id == each.user_id:
-                                    get_user_id = self.env['hr.employee'].search(
-                                        [('device_id', '=', each.user_id)])
+                                    get_user_id = self.env['hr.employee'].search([('device_id', '=', each.user_id)])
                                     if get_user_id:
                                         duplicate_atten_ids = zk_attendance.search(
                                             [('device_id', '=', each.user_id), ('punching_time', '=', atten_time)])
@@ -144,7 +147,6 @@ class ZkMachine(models.Model):
                                             zk_attendance.create({'employee_id': get_user_id.id,
                                                                   'device_id': each.user_id,
                                                                   'attendance_type': str(each.status),
-                                                                  # 'punch_type': str(each.punch),
                                                                   'punching_time': atten_time,
                                                                   'address_id': info.address_id.id})
                                             att_var = att_obj.search([('employee_id', '=', get_user_id.id),
@@ -167,15 +169,13 @@ class ZkMachine(models.Model):
                                         zk_attendance.create({'employee_id': employee.id,
                                                               'device_id': each.user_id,
                                                               'attendance_type': str(each.status),
-                                                              # 'punch_type': str(each.punch),
                                                               'punching_time': atten_time,
                                                               'address_id': info.address_id.id})
                                         att_obj.create({'employee_id': employee.id,
                                                         'check_in': atten_time})
                                 else:
                                     pass
-                    # zk.enableDevice()
-                    conn.disconnect
+                    conn.disconnect()
                     return True
                 else:
                     raise UserError(_('Unable to get the attendance log, please try again later.'))
