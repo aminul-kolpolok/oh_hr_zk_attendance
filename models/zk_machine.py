@@ -1,5 +1,6 @@
 
 import pytz
+import pytz
 import logging
 import datetime
 import pytz
@@ -10,6 +11,7 @@ utc_dt = datetime.datetime.utcnow()
 # Convert UTC datetime to the desired timezone
 tz = pytz.timezone('Asia/Dhaka')
 local_dt = utc_dt.replace(tzinfo=pytz.utc).astimezone(tz)
+
 from .zkconst import *
 from struct import unpack
 from odoo import api, fields, models
