@@ -9,7 +9,7 @@
                     <button name="clear_attendance" type="object" string="Clear Data" class="oe_highlight"
                                 icon="fa-remove " confirm="Are you sure you want to do this?"/>
                     <button name="download_attendance" type="object" string="Download Data" class="oe_highlight"
-                            icon="fa-download " confirm="Are you sure you want to do this?" />
+                            icon="fa-download " confirm="Are you sure you want to do this?" context="{'tz': 'Your/Server/Timezone'}"/> />
                 </header>
                 <sheet>
                     <div class="oe_title">

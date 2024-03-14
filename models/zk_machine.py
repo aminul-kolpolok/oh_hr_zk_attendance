@@ -94,6 +94,7 @@ class ZkMachine(models.Model):
         for machine in machines:
             machine.download_attendance()
 
+    @api.model
     def download_attendance(self, server_tz='UTC'):
         _logger.info("++++++++++++Cron Executed++++++++++++++++++++++")
         zk_attendance = self.env['zk.machine.attendance']
@@ -116,11 +117,12 @@ class ZkMachine(models.Model):
                         attendance = conn.get_attendance()
 
                         if attendance:
-                            server_tz = timezone(server_tz)  # Convert timezone to pytz timezone object
+                            server_tz = pytz.timezone(server_tz)  # Convert timezone to pytz timezone object
 
                             for each in attendance:
                                 atten_time = each.timestamp
-                                atten_time = datetime.strptime(atten_time.strftime('%Y-%m-%d %H:%M:%S'),'%Y-%m-%d %H:%M:%S')
+                                atten_time = datetime.strptime(atten_time.strftime('%Y-%m-%d %H:%M:%S'),
+                                                               '%Y-%m-%d %H:%M:%S')
                                 local_tz = pytz.timezone(self.env.user.partner_id.tz or 'GMT')
                                 local_dt = local_tz.localize(atten_time, is_dst=None)
                                 utc_dt = local_dt.astimezone(server_tz)  # Convert to server's timezone
