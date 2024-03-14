@@ -88,11 +88,16 @@ class ZkMachine(models.Model):
         except:
             return False
 
+    # @api.model
+    # def cron_download(self):
+    #     machines = self.env['zk.machine'].search([])
+    #     for machine in machines:
+    #         machine.download_attendance()
     @api.model
     def cron_download(self):
         machines = self.env['zk.machine'].search([])
         for machine in machines:
-            machine.download_attendance()
+            machine.download_attendance(server_tz='Asia/Dhaka')
 
     def download_attendance(self, server_tz='UTC'):
         _logger.info("++++++++++++Cron Executed++++++++++++++++++++++")
@@ -131,7 +136,7 @@ class ZkMachine(models.Model):
                                         if uid.user_id == each.user_id:
                                             get_user_id = self.env['hr.employee'].search(
                                                 [('device_id', '=', each.user_id)])
-
+                                            
                                             if get_user_id:
                                                 duplicate_atten_ids = zk_attendance.search(
                                                     [('device_id', '=', each.user_id),
