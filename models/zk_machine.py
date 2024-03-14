@@ -1,17 +1,9 @@
 
 import pytz
-import pytz
 import logging
 import datetime
-import pytz
-
-# Assuming utc_dt is a datetime object
-utc_dt = datetime.datetime.utcnow()
-
-# Convert UTC datetime to the desired timezone
-tz = pytz.timezone('Asia/Dhaka')
-local_dt = utc_dt.replace(tzinfo=pytz.utc).astimezone(tz)
-
+from pytz import timezone
+from . import zklib
 from .zkconst import *
 from struct import unpack
 from odoo import api, fields, models
@@ -102,8 +94,7 @@ class ZkMachine(models.Model):
         for machine in machines:
             machine.download_attendance()
 
-
-    def download_attendance(self, server_tz='Asia/Dhaka'):
+    def download_attendance(self, server_tz='UTC'):
         _logger.info("++++++++++++Cron Executed++++++++++++++++++++++")
         zk_attendance = self.env['zk.machine.attendance']
         att_obj = self.env['hr.attendance']
@@ -125,13 +116,12 @@ class ZkMachine(models.Model):
                         attendance = conn.get_attendance()
 
                         if attendance:
-                            server_tz = pytz.timezone(server_tz)  # Convert timezone to pytz timezone object
+                            server_tz = timezone(server_tz)  # Convert timezone to pytz timezone object
 
                             for each in attendance:
                                 atten_time = each.timestamp
-                                atten_time = datetime.datetime.strptime(atten_time.strftime('%Y-%m-%d %H:%M:%S'),
-                                                                        '%Y-%m-%d %H:%M:%S')
-                                local_tz = pytz.timezone('UTC')  # Assuming all timestamps are in UTC
+                                atten_time = datetime.strptime(atten_time.strftime('%Y-%m-%d %H:%M:%S'),'%Y-%m-%d %H:%M:%S')
+                                local_tz = pytz.timezone(self.env.user.tz or 'GMT')
                                 local_dt = local_tz.localize(atten_time, is_dst=None)
                                 utc_dt = local_dt.astimezone(server_tz)  # Convert to server's timezone
                                 atten_time = utc_dt.strftime("%Y-%m-%d %H:%M:%S")
