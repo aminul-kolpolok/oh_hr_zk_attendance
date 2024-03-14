@@ -2,8 +2,14 @@
 import pytz
 import logging
 import datetime
-from pytz import timezone
-from . import zklib
+import pytz
+
+# Assuming utc_dt is a datetime object
+utc_dt = datetime.datetime.utcnow()
+
+# Convert UTC datetime to the desired timezone
+tz = pytz.timezone('Asia/Dhaka')
+local_dt = utc_dt.replace(tzinfo=pytz.utc).astimezone(tz)
 from .zkconst import *
 from struct import unpack
 from odoo import api, fields, models
@@ -94,8 +100,8 @@ class ZkMachine(models.Model):
         for machine in machines:
             machine.download_attendance()
 
-    @api.model
-    def download_attendance(self, server_tz='UTC'):
+
+    def download_attendance(self, server_tz='Asia/Dhaka'):
         _logger.info("++++++++++++Cron Executed++++++++++++++++++++++")
         zk_attendance = self.env['zk.machine.attendance']
         att_obj = self.env['hr.attendance']
@@ -121,9 +127,9 @@ class ZkMachine(models.Model):
 
                             for each in attendance:
                                 atten_time = each.timestamp
-                                atten_time = datetime.strptime(atten_time.strftime('%Y-%m-%d %H:%M:%S'),
-                                                               '%Y-%m-%d %H:%M:%S')
-                                local_tz = pytz.timezone(self.env.user.partner_id.tz or 'GMT')
+                                atten_time = datetime.datetime.strptime(atten_time.strftime('%Y-%m-%d %H:%M:%S'),
+                                                                        '%Y-%m-%d %H:%M:%S')
+                                local_tz = pytz.timezone('UTC')  # Assuming all timestamps are in UTC
                                 local_dt = local_tz.localize(atten_time, is_dst=None)
                                 utc_dt = local_dt.astimezone(server_tz)  # Convert to server's timezone
                                 atten_time = utc_dt.strftime("%Y-%m-%d %H:%M:%S")
