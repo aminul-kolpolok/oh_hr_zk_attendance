@@ -1,10 +1,4 @@
-# -*- coding: utf-8 -*-
-#############################################################################
-#    You should have received a copy of the GNU LESSER GENERAL PUBLIC LICENSE
-#    (LGPL v3) along with this program.
-#    If not, see <http://www.gnu.org/licenses/>.
-#
-#############################################################################
+
 import pytz
 import logging
 import datetime
@@ -126,11 +120,11 @@ class ZkMachine(models.Model):
 
                             for each in attendance:
                                 atten_time = each.timestamp
-                                atten_time = datetime.strptime(atten_time.strftime('%d-%m-%Y %H:%M:%S'),'%d-%m-%Y %H:%M:%S')
+                                atten_time = datetime.strptime(atten_time.strftime('%Y-%m-%d %H:%M:%S'),'%Y-%m-%d %H:%M:%S')
                                 local_tz = pytz.timezone(self.env.user.partner_id.tz or 'GMT')
                                 local_dt = local_tz.localize(atten_time, is_dst=None)
                                 utc_dt = local_dt.astimezone(server_tz)  # Convert to server's timezone
-                                atten_time = utc_dt.strftime("%d-%m-%Y %H:%M:%S")
+                                atten_time = utc_dt.strftime("%Y-%m-%d %H:%M:%S")
 
                                 if user:
                                     for uid in user:
