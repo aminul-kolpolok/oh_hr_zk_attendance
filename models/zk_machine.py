@@ -1,4 +1,3 @@
-
 import pytz
 import logging
 import datetime
@@ -88,11 +87,6 @@ class ZkMachine(models.Model):
         except:
             return False
 
-    # @api.model
-    # def cron_download(self):
-    #     machines = self.env['zk.machine'].search([])
-    #     for machine in machines:
-    #         machine.download_attendance()
     @api.model
     def cron_download(self):
         machines = self.env['zk.machine'].search([])
@@ -121,7 +115,7 @@ class ZkMachine(models.Model):
                         attendance = conn.get_attendance()
 
                         if attendance:
-                            server_tz = timezone(server_tz)  # Convert timezone to pytz timezone object
+                            server_tz = pytz.timezone(server_tz)  # Update to use pytz.timezone object
 
                             for each in attendance:
                                 atten_time = each.timestamp
@@ -136,7 +130,7 @@ class ZkMachine(models.Model):
                                         if uid.user_id == each.user_id:
                                             get_user_id = self.env['hr.employee'].search(
                                                 [('device_id', '=', each.user_id)])
-                                            
+
                                             if get_user_id:
                                                 duplicate_atten_ids = zk_attendance.search(
                                                     [('device_id', '=', each.user_id),
