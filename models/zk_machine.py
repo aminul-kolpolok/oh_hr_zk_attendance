@@ -1,7 +1,6 @@
 import pytz
 import logging
 import datetime
-from pytz import timezone
 from . import zklib
 from .zkconst import *
 from struct import unpack
@@ -114,16 +113,17 @@ class ZkMachine(models.Model):
                         user = conn.get_users()
                         attendance = conn.get_attendance()
 
-                        if attendance:
-                            server_tz = pytz.timezone(server_tz)  # Update to use pytz.timezone object
 
+                        if attendance:
                             for each in attendance:
                                 atten_time = each.timestamp
-                                atten_time = datetime.strptime(atten_time.strftime('%Y-%m-%d %H:%M:%S'),'%Y-%m-%d %H:%M:%S')
+                                atten_time = datetime.datetime.strptime(
+                                atten_time.strftime('%Y-%m-%d %H:%M:%S'), '%Y-%m-%d %H:%M:%S')
                                 local_tz = pytz.timezone(self.env.user.tz or 'GMT')
                                 local_dt = local_tz.localize(atten_time, is_dst=None)
-                                utc_dt = local_dt.astimezone(server_tz)  # Convert to server's timezone
-                                atten_time = utc_dt.strftime("%Y-%m-%d %H:%M:%S")
+                                server_dt = local_dt.astimezone(pytz.timezone(server_tz))
+                                atten_time = server_dt.strftime("%Y-%m-%d %H:%M:%S")
+
 
                                 if user:
                                     for uid in user:
@@ -192,4 +192,4 @@ class ZkMachine(models.Model):
                         conn.disconnect()
 
         # Return False if no attendance data was retrieved from any machine
-        return False
+        return
