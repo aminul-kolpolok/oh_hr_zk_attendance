@@ -183,3 +183,4 @@ class ZkMachine(models.Model):
                     raise UserError(_('Unable to get the attendance log, please try again later.'))
             else:
                 raise UserError(_('Unable to connect, please check the parameters and network connections.'))
+

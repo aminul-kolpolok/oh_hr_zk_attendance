@@ -1,4 +1,8 @@
 from struct import pack, unpack
+
+from appdirs import unicode
+from reportlab import xrange
+
 from .zkconst import *
 
 
