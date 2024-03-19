@@ -121,6 +121,7 @@ class ZkMachine(models.Model):
                 except:
                     attendance = False
                 if attendance:
+
                     for each in attendance:
                         atten_time = each.timestamp
                         atten_time = datetime.strptime(atten_time.strftime('%Y-%m-%d %H:%M:%S'), '%Y-%m-%d %H:%M:%S')
@@ -132,6 +133,7 @@ class ZkMachine(models.Model):
                         atten_time = datetime.strptime(
                             utc_dt, "%Y-%m-%d %H:%M:%S")
                         atten_time = fields.Datetime.to_string(atten_time)
+
                         if user:
                             for uid in user:
                                 if uid.user_id == each.user_id:
@@ -146,34 +148,37 @@ class ZkMachine(models.Model):
                                             zk_attendance.create({'employee_id': get_user_id.id,
                                                                   'device_id': each.user_id,
                                                                   'attendance_type': str(each.status),
-                                                                  # 'punch_type': str(each.punch),
+                                                                  'punch_type': str(each.punch),
                                                                   'punching_time': atten_time,
                                                                   'address_id': info.address_id.id})
-                                            att_var = att_obj.search([('employee_id', '=', get_user_id.id),
-                                                                      ('check_out', '=', False)])
-                                            if each.punch == 0:  # check-in
-                                                if not att_var:
-                                                    att_obj.create({'employee_id': get_user_id.id,
-                                                                    'check_in': atten_time})
-                                            if each.punch == 1:  # check-out
-                                                if len(att_var) == 1:
-                                                    att_var.write({'check_out': atten_time})
-                                                else:
-                                                    att_var1 = att_obj.search([('employee_id', '=', get_user_id.id)])
-                                                    if att_var1:
-                                                        att_var1[-1].write({'check_out': atten_time})
+
+                                            today_date = date.today()
+
+                                            attendance_time = datetime.strptime(atten_time, '%Y-%m-%d %H:%M:%S')
+                                            attendance_date = attendance_time.date()
+                                            attendance_date = fields.Date.from_string(attendance_date).strftime(
+                                                '%Y-%m-%d')
+
+                                            no_checkout = self.env['hr.attendance'].search(
+                                                [('employee_id', '=', get_user_id.id),
+                                                 ('check_in', '>=', attendance_date),
+                                                 ('check_out', '=', False)], limit=1)
+
+                                            attendance_records = self.env['hr.attendance'].search(
+                                                [('employee_id', '=', get_user_id.id),
+                                                 ('check_in', '>=', attendance_date + ' 00:00:00'),
+                                                 ('check_in', '<=', attendance_date + ' 23:59:59')], limit=1)
+                                            if attendance_records:
+                                                if attendance_records.check_in < attendance_time:
+                                                    attendance_records.check_out = atten_time
+
+                                            else:
+                                                att_obj.create({'employee_id': get_user_id.id,
+                                                                'check_in': atten_time})
+
 
                                     else:
-                                        employee = self.env['hr.employee'].create(
-                                            {'device_id': each.user_id, 'name': uid.name})
-                                        zk_attendance.create({'employee_id': employee.id,
-                                                              'device_id': each.user_id,
-                                                              'attendance_type': str(each.status),
-                                                              # 'punch_type': str(each.punch),
-                                                              'punching_time': atten_time,
-                                                              'address_id': info.address_id.id})
-                                        att_obj.create({'employee_id': employee.id,
-                                                        'check_in': atten_time})
+                                        pass
                                 else:
                                     pass
                     # zk.enableDevice()
