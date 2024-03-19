@@ -148,7 +148,7 @@ class ZkMachine(models.Model):
                                             zk_attendance.create({'employee_id': get_user_id.id,
                                                                   'device_id': each.user_id,
                                                                   'attendance_type': str(each.status),
-                                                                  'punch_type': str(each.punch),
+                                                                  # 'punch_type': str(each.punch),
                                                                   'punching_time': atten_time,
                                                                   'address_id': info.address_id.id})
 
